@@ -9,3 +9,4 @@ langchain-experimental
 langchain-huggingface
 numpy
 requests
+textstat
