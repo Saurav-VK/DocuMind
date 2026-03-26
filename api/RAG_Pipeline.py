@@ -13,6 +13,7 @@ from retrieval import *
 from clean_for_llm import *
 from chunk_filter import *
 from generation import *
+from evaluation import *
 
 
 # In[4]:
@@ -54,6 +55,8 @@ def query_response(query : str):
 
     results = retrieve_chunks(query , chunks , index)
 
+    app.state.retrieved_chunks = results
+
     cleaned_results = [clean_for_llm(result) for result in results]
 
     response = answer_query(query , cleaned_results)
@@ -61,6 +64,26 @@ def query_response(query : str):
     return {"response" : response}
 
 
+@app.get("/evaluate")
+def evaluate_response():
+    if not hasattr(app.state , "retrieved_chunks"):
+        return {"error" : "Please pass a query before evaluation."}
+
+    retrieved_chunks = app.state.retrieved_chunks
+
+    chunk_content = [chunk["text"] for chunk in retrieved_chunks]
+
+    coherence = evaluate_coherence(chunk_content)
+
+    window_coherence = evaluate_window_coherence(chunk_content)
+
+    readability = evaluate_readability(chunk_content)
+
+    return {
+           "Coherence" : coherence , 
+           "Window coherence for slow context drifting" : window_coherence ,
+           "Readability score" : readability
+           }
 
 
 

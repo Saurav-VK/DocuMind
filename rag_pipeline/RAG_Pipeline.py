@@ -13,6 +13,7 @@ from retrieval import *
 from clean_for_llm import *
 from chunk_filter import *
 from generation import *
+from evaluation import *
 
 
 # In[4]:
@@ -22,9 +23,8 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
-@app.post("/upload/{pdf_path}/{strategy}")
+@app.post("/upload/{pdf_path:path}/{strategy}")
 def upload_and_store(pdf_path : str , strategy : str):
-    global index , chunks
     
     content = load_pdf_text(pdf_path)
 
@@ -34,27 +34,56 @@ def upload_and_store(pdf_path : str , strategy : str):
 
     chunks = [chunk for chunk in chunks if is_valid_chunk(chunk)]
 
+    app.state.chunks = chunks
+
     index = create_vector_store(chunks)
 
-    return {"message" : "PDF uploaded successfully"}
+    app.state.index = index
+
+    return {"message" : "PDF uploaded succesfully. Index created"}
 
 
-# In[8]:
 
+@app.post("/query/{query}")
+def query_response(query : str):
+    if not hasattr(app.state , "chunks"):
+        return {"error" : "Please Upload the PDF before querying"}
+    
+    chunks = app.state.chunks
+    
+    index = app.state.index
 
-@app.post("/ask_query/{query}")
-def ask_query(query : str):
-    results = retrieve_chunks(query , chunks = chunks , index = index)
+    results = retrieve_chunks(query , chunks , index)
+
+    app.state.retrieved_chunks = results
 
     cleaned_results = [clean_for_llm(result) for result in results]
 
     response = answer_query(query , cleaned_results)
-    
+
     return {"response" : response}
 
 
-# In[ ]:
+@app.get("/evaluate")
+def evaluate_response():
+    if not hasattr(app.state , "retrieved_chunks"):
+        return {"error" : "Please pass a query before evaluation."}
 
+    retrieved_chunks = app.state.retrieved_chunks
+
+    chunk_content = [chunk["text"] for chunk in retrieved_chunks]
+
+    coherence = evaluate_coherence(chunk_content)
+
+    window_coherence = evaluate_window_coherence(chunk_content)
+
+    readability = evaluate_readability(chunk_content)
+
+    return {
+           "Coherence" : coherence , 
+           "Window coherence for slow context drifting" : window_coherence ,
+           "Readability score" : readability
+           }
 
 
 
