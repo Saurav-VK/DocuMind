@@ -141,7 +141,7 @@ uvicorn RAG\_Pipeline:app --reload
 
 
 
-\#### a. Upload PDF for cleaning and index creation: **http://127.0.0.1:8000/upload/whole\_path\_to\_pdf/chunking\_ method** (semantic/token/sentence/recursive)
+\#### a. Upload PDF for cleaning and index creation: **http://127.0.0.1:8000/upload/whole\_path\_to\_pdf/chunking\_ method** (semantic/token/sentence/recursive) [POST]
 
 Example: http://127.0.0.1:8000/upload/C:/Users/abcd/Documents/book.pdf/semantic
 
@@ -149,11 +149,16 @@ Expected result : **{"message" : "PDF uploaded succesfully. Index created"}**
 
 
 
-\#### b. Query DocuMind and get the response: **http://127.0.0.1:8000/query/query\_text**
+\#### b. Query DocuMind and get the response: **http://127.0.0.1:8000/query/query\_text** [POST]
 
 Example: http://127.0.0.1:8000/query/Is Machine Learning a subset of Artificial Intelligence
 
 Expected result : **{"response" : "response to the users query" , "cached" : true/false}**
+
+
+\#### c. Evaluate the retrieved chunks: **http://127.0.0.1:8000/evaluate** [GET]
+
+Expected result: Calculated coherence, windowed coherence and readability calculated using textstat
 
 
 
