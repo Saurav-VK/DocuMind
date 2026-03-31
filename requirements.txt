@@ -10,3 +10,4 @@ langchain-huggingface
 numpy
 requests
 textstat
+redis

@@ -14,7 +14,7 @@ from clean_for_llm import *
 from chunk_filter import *
 from generation import *
 from evaluation import *
-
+import redis
 
 # In[4]:
 
@@ -43,11 +43,19 @@ def upload_and_store(pdf_path : str , strategy : str):
     return {"message" : "PDF uploaded succesfully. Index created"}
 
 
-
+r = redis.Redis(host = "localhost" , port = 6379 , db = 0)
 @app.post("/query/{query}")
 def query_response(query : str):
     if not hasattr(app.state , "chunks"):
         return {"error" : "Please Upload the PDF before querying"}
+
+    cached = r.get(query)
+
+    if cached:
+        return {
+               "response" : cached.decode() ,
+               "cached" : True
+               }
     
     chunks = app.state.chunks
     
@@ -61,7 +69,12 @@ def query_response(query : str):
 
     response = answer_query(query , cleaned_results)
 
-    return {"response" : response}
+    r.setex(query , 300 , response)
+
+    return {
+            "response" : response ,
+            "cached" : False
+           }
 
 
 @app.get("/evaluate")

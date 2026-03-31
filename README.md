@@ -102,11 +102,14 @@ cd DocuMind
 
 
 
-\### 2. Install dependencies
+\### 2. Install docker, dependencies and set up redis cache
 
 
 
 * pip install -r requirements.txt
+
+```bash
+docker run -d -p 6379:6379 redis
 
 
 
@@ -150,7 +153,7 @@ Expected result : **{"message" : "PDF uploaded succesfully. Index created"}**
 
 Example: http://127.0.0.1:8000/query/Is Machine Learning a subset of Artificial Intelligence
 
-Expected result : **{"response" : "response to the users query"}**
+Expected result : **{"response" : "response to the users query" , "cached" : true/false}**
 
 
 
