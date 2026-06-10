@@ -42,6 +42,8 @@ def upload_and_store(pdf_path : str , strategy : str):
 
     return {"message" : "PDF uploaded succesfully. Index created"}
 
+def normalize_query(query):
+    return query.lower().strip()
 
 r = redis.Redis(host = "localhost" , port = 6379 , db = 0)
 @app.post("/query/{query}")
@@ -49,7 +51,9 @@ def query_response(query : str):
     if not hasattr(app.state , "chunks"):
         return {"error" : "Please Upload the PDF before querying"}
 
-    cached = r.get(query)
+    normalized_query = normalize_query(query)
+
+    cached = r.get(normalized_query)
 
     if cached:
         return {
@@ -69,7 +73,7 @@ def query_response(query : str):
 
     response = answer_query(query , cleaned_results)
 
-    r.setex(query , 300 , response)
+    r.setex(normalized_query , 300 , response)
 
     return {
             "response" : response ,
