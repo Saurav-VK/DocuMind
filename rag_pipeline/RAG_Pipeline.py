@@ -23,10 +23,10 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
-@app.post("/upload/{pdf_path:path}/{strategy}")
-def upload_and_store(pdf_path : str , strategy : str):
+@app.post("/upload/{folder_path:path}/{strategy}")
+def upload_and_store(folder_path : str , strategy : str):
     
-    content = load_pdf_text(pdf_path)
+    content = load_multiple_pdfs(folder_path)
 
     pages = [page for page in content if is_valid_page(page)]
 
@@ -44,6 +44,7 @@ def upload_and_store(pdf_path : str , strategy : str):
 
 def normalize_query(query):
     return query.lower().strip()
+
 
 r = redis.Redis(host = "localhost" , port = 6379 , db = 0)
 @app.post("/query/{query}")
@@ -70,6 +71,8 @@ def query_response(query : str):
     app.state.retrieved_chunks = results
 
     cleaned_results = [clean_for_llm(result) for result in results]
+
+    print(cleaned_results)
 
     response = answer_query(query , cleaned_results)
 

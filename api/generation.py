@@ -32,6 +32,7 @@ def generate_answer(prompt):
 def answer_query(query , cleaned_chunks):
     context = build_context(cleaned_chunks)
 
+
     prompt = f"""
             You are an AI assistant.
             

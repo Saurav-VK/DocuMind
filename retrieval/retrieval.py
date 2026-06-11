@@ -1,6 +1,6 @@
 from sentence_transformers import SentenceTransformer
 
-def retrieve_chunks(query , chunks , index , k = 2):
+def retrieve_chunks(query , chunks , index , k = 5):
 
     encoder = SentenceTransformer("all-MiniLM-L6-v2")
 
