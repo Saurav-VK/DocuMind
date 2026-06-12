@@ -19,6 +19,7 @@ def retrieve_chunks(query , chunks , index , k = 5):
 
         results.append(
             {
+                "id" : chunk["id"] ,
                 "text" : chunk["text"] ,
                 "page" : chunk["page"] ,
                 "source" : chunk["source"] ,

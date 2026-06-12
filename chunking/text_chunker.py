@@ -4,6 +4,8 @@ def text_chunker(pages , strategy = "recursive"):
 
     all_chunks = []
     
+    id = 0
+    
     chunker = ChunkingStrategies()
     
     for page in pages:
@@ -23,7 +25,8 @@ def text_chunker(pages , strategy = "recursive"):
             raise ValueError("Invalid Method")
 
         for chunk in chunks:
-            all_chunks.append({"text" : chunk , "page" : page["page"] , "source" : page["source"]})
+            id += 1
+            all_chunks.append({"id" : id , "text" : chunk , "page" : page["page"] , "source" : page["source"]})
 
     return all_chunks
 

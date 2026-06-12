@@ -5,9 +5,8 @@
 
 
 def bm25_retreival(query , bm25_index , chunks , k = 5):
-    tokenized_query = query.lower().split()
 
-    scores = bm25_index.get_scores(tokenized_query)
+    scores = bm25_index.get_scores(query)
 
     ranked_indices = sorted(range(len(scores)) , key = lambda i : scores[i] , reverse = True)
 
@@ -17,6 +16,7 @@ def bm25_retreival(query , bm25_index , chunks , k = 5):
         chunk = chunks[idx]
 
         results.append({
+            "id" : chunk["id"] ,
             "text" : chunk["text"] ,
             "page" : chunk["page"] ,
             "source" : chunk["source"] ,

@@ -14,6 +14,9 @@ from clean_for_llm import *
 from chunk_filter import *
 from generation import *
 from evaluation import *
+from Create_BM25_Index import *
+from BM25_retreival import *
+from reciprocal_ranking_fusion import *
 import redis
 
 # In[4]:
@@ -36,9 +39,13 @@ def upload_and_store(folder_path : str , strategy : str):
 
     app.state.chunks = chunks
 
+    bm25_index = create_bm25_index(chunks)
+
     index = create_vector_store(chunks)
 
     app.state.index = index
+
+    app.state.bm25_index = bm25_index
 
     return {"message" : "PDF uploaded succesfully. Index created"}
 
@@ -66,7 +73,13 @@ def query_response(query : str):
     
     index = app.state.index
 
-    results = retrieve_chunks(query , chunks , index)
+    bm25_index = app.state.bm25_index
+
+    results_faiss = retrieve_chunks(query , chunks , index)
+
+    results_bm25 = bm25_retreival(normalized_query , bm25_index , chunks , k = 5)
+
+    results = reciprocal_rank_fusion(results_faiss , results_bm25)
 
     app.state.retrieved_chunks = results
 
@@ -104,6 +117,3 @@ def evaluate_response():
            "Window coherence for slow context drifting" : window_coherence ,
            "Readability score" : readability
            }
-
-
-

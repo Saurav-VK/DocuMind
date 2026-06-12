@@ -5,7 +5,7 @@
 
 
 def build_context(cleaned_chunks):
-    "\n\n".join(cleaned_chunks[:k])
+    return "\n\n".join(cleaned_chunks[:k])
 
 
 # In[4]:
