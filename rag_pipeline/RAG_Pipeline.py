@@ -17,6 +17,7 @@ from evaluation import *
 from Create_BM25_Index import *
 from BM25_retreival import *
 from reciprocal_ranking_fusion import *
+from ReRanker import *
 import redis
 
 # In[4]:
@@ -79,7 +80,9 @@ def query_response(query : str):
 
     results_bm25 = bm25_retreival(normalized_query , bm25_index , chunks , k = 5)
 
-    results = reciprocal_rank_fusion(results_faiss , results_bm25)
+    rrf_chunks = reciprocal_rank_fusion(results_faiss , results_bm25)
+
+    results = reranker_function(query , rrf_chunks)
 
     app.state.retrieved_chunks = results
 
