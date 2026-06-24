@@ -141,9 +141,11 @@ uvicorn RAG\_Pipeline:app --reload
 
 
 
-\#### a. Upload PDF for cleaning and index creation: **http://127.0.0.1:8000/upload/whole\_path\_to\_pdf/chunking\_ method** (semantic/token/sentence/recursive) [POST]
+\#### a. Upload PDF for cleaning and index creation: **http://127.0.0.1:8000/upload/method** (semantic/token/sentence/recursive) [POST]
 
-Example: http://127.0.0.1:8000/upload/C:/Users/abcd/Documents/book.pdf/semantic
+Example: http://127.0.0.1:8000/upload/semantic
+
+Testing in Postman: select the body type as form-data where: key = "files" , type = File and select the necessary file from the device 
 
 Expected result : **{"message" : "PDF uploaded succesfully. Index created"}**
 

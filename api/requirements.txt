@@ -11,3 +11,6 @@ numpy
 requests
 textstat
 redis
+rank-bm25
+langchain-text-splitters
+python-multipart

@@ -23,14 +23,26 @@ import redis
 # In[4]:
 
 
-from fastapi import FastAPI
+from fastapi import FastAPI , UploadFile , File
+from typing import List
+
+UPLOAD_DIR = "uploaded_pdfs"
+os.makedirs(UPLOAD_DIR , exist_ok = True)
+
+for file in os.listdir(UPLOAD_DIR):
+    os.remove(os.path.join(UPLOAD_DIR, file))
 
 app = FastAPI()
 
-@app.post("/upload/{folder_path:path}/{strategy}")
-def upload_and_store(folder_path : str , strategy : str):
+@app.post("/upload/{strategy}")
+def upload_and_store(strategy : str , files = List(UploadFile) = File(...)):
+
+    for file in files:
+        file_path = os.path.join(UPLOAD_DIR , file.filename)
+        with open(file_path , "wb") as f:
+            f.write(file.file.read())
     
-    content = load_multiple_pdfs(folder_path)
+    content = load_multiple_pdfs(UPLOAD_DIR)
 
     pages = [page for page in content if is_valid_page(page)]
 
