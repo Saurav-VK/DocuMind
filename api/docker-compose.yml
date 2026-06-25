@@ -5,6 +5,8 @@ services:
 
     api:
         build: .
+        env_file:
+            - .env
         container_name: documind-api
         ports:
             - "8000:8000"

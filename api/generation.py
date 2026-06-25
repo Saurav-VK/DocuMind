@@ -12,12 +12,16 @@ def build_context(cleaned_chunks):
 
 
 import requests
+import os
+
+OLLAMA_HOST = os.getenv("OLLAMA_HOST" , "host.docker.internal")
+OLLAMA_PORT = os.getenv("OLLAMA_PORT" , 11434)
 
 def generate_answer(prompt):
     response = requests.post(
-        "http://host.docker.internal:11434/api/generate",
+        f"http://{OLLAMA_HOST}:{OLLAMA_PORT}/api/generate",
         json={
-            "model": "mistral",
+            "model": os.getenv("MODEL_NAME" , "mistral"),
             "prompt": prompt,
             "stream": False
         }

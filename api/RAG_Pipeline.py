@@ -66,7 +66,8 @@ def normalize_query(query):
     return query.lower().strip()
 
 
-r = redis.Redis(host = "redis-server" , port = 6379 , db = 0)
+r = redis.Redis(host = os.getenv("REDIS_HOST" , "redis") , 
+                port = int(os.getenv("REDIS_PORT" ,6379)) , db = 0)
 @app.post("/query/{query}")
 def query_response(query : str):
     if not hasattr(app.state , "chunks"):

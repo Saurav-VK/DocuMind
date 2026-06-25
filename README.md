@@ -1,168 +1,300 @@
-\# 📄 DocuMind – Intelligent PDF Q\&A System (RAG)
+# 📄 DocuMind – Intelligent PDF Q&A System (RAG)
 
+DocuMind is a production-style Retrieval-Augmented Generation (RAG) system that combines hybrid retrieval (FAISS + BM25), Reciprocal Rank Fusion (RRF), Cross-Encoder reranking, Redis caching, and a locally hosted LLM to provide accurate and context-aware answers from PDF documents.
 
+---
 
-DocuMind is a production-style Retrieval-Augmented Generation (RAG) system that enables users to ask questions over PDF documents and receive accurate, context-aware answers using a locally hosted LLM.
+## 🚀 Features
 
+* 📥 PDF ingestion with metadata (page number, source)
 
+* 🧹 Advanced preprocessing:
 
-\---
+  * Page-level filtering (removes TOC, noise, irrelevant pages)
+  * Chunk-level filtering
 
+* 🧩 Multiple chunking strategies:
 
+  * Token-based splitting
+  * Sentence-transformer-based splitting
+  * Semantic chunking
+  * Recursive character splitting
 
-\## 🚀 Features
+* 🔍 Vector similarity search using FAISS
 
+* 🔎 Hybrid retrieval using FAISS (dense retrieval) + BM25 (sparse retrieval)
 
+* 🔀 Reciprocal Rank Fusion (RRF) for combining retrieval results
 
-\- 📥 PDF ingestion with metadata (page number, source)
+* 🎯 Cross-Encoder reranking for improved retrieval relevance
 
-\- 🧹 Advanced preprocessing:
+* ⚡ Redis-based response caching
 
-&#x20; - Page-level filtering (removes TOC, noise, irrelevant pages)
+* 🧠 Context-aware answer generation using local LLM (Mistral via Ollama)
 
-&#x20; - Chunk-level filtering
+* 📂 Multi-file upload support via API
 
-\- 🧩 Multiple chunking strategies:
+* 🐳 Dockerized deployment
 
-&#x20; - Token-based splitting
+* 🐳 Docker Compose support for multi-container orchestration
 
-&#x20; - Sentence-transformer-based splitting
+* 🏗️ Modular pipeline (fully custom RAG implementation)
 
-&#x20; - Semantic chunking
+---
 
-&#x20; - Recursive character splitting
+## 🧠 System Architecture
 
-\- 🔍 Vector similarity search using FAISS
+PDF → Page Filtering → Chunking → Chunk Filtering
 
-\- 🧠 Context-aware answer generation using local LLM (Mistral via Ollama)
+→ Embeddings → FAISS Index
 
-\- ⚡ FastAPI-based API for real-time querying
+→ BM25 Index
 
-\- 🏗️ Modular pipeline (fully custom RAG implementation)
+→ Query
 
+→ Dense Retrieval + Sparse Retrieval
 
+→ Reciprocal Rank Fusion (RRF)
 
-\---
+→ Cross-Encoder Reranking
 
+→ Context Building
 
+→ Redis Cache Check
 
-\## 🧠 System Architecture
+→ LLM (Mistral)
 
+→ Answer
 
+---
 
-* PDF → Page Filtering → Chunking → Chunk Filtering → Embeddings → FAISS Index
+## 🛠️ Tech Stack
 
-→ Query → Retrieval → Cleaning → Context Building → LLM → Answer
+* Python
+* FastAPI
+* FAISS
+* Sentence Transformers
+* BM25 (rank-bm25)
+* Cross Encoder (Sentence Transformers)
+* Redis
+* Ollama (Mistral LLM)
+* PyPDF
+* LangChain (used for text splitting strategies)
+* Docker
+* Docker Compose
 
+---
 
+## 📦 Installation
 
-
-
-\---
-
-
-
-\## 🛠️ Tech Stack
-
-
-
-\- Python
-
-\- FastAPI
-
-\- FAISS
-
-\- Sentence Transformers
-
-\- Ollama (Mistral LLM)
-
-\- PyPDF
-
-\- LangChain (used for text splitting strategies)
-
-
-
-\---
-
-
-
-\## 📦 Installation
-
-
-
-\### 1. Clone the repository
-
-
+### 1. Clone the repository
 
 ```bash
-
 git clone https://github.com/your-username/DocuMind.git
 
 cd DocuMind
+```
 
+### 2. Install Python dependencies
 
+```bash
+pip install -r requirements.txt
+```
 
-\### 2. Install docker, dependencies and set up redis cache
-
-
-
-* pip install -r requirements.txt
+### 3. Start Redis
 
 ```bash
 docker run -d -p 6379:6379 redis
+```
 
-
-
-\### 3. Install and run Ollama
-
-
+### 4. Install and run Ollama
 
 ```bash
-
 ollama run mistral
+```
 
-
-
-\### 4. Running the API
-
-
+### 5. Run the API
 
 ```bash
+uvicorn RAG_Pipeline:app --reload
+```
 
-uvicorn RAG\_Pipeline:app --reload
+### 6. Open Swagger UI or Postman
 
+### 7. Test Endpoints
 
+#### a. Upload PDF(s) for cleaning, chunking, indexing and retrieval preparation
 
-\### 5. Open Swagger UI or Postman
+**POST**
 
+```text
+http://127.0.0.1:8000/upload/method
+```
 
+Choose one of:
 
-\### 6. Test endpoints
+```text
+semantic
+token
+sentence
+recursive
+```
 
+Example:
 
+```text
+http://127.0.0.1:8000/upload/semantic
+```
 
-\#### a. Upload PDF for cleaning and index creation: **http://127.0.0.1:8000/upload/method** (semantic/token/sentence/recursive) [POST]
+Testing in Postman:
 
-Example: http://127.0.0.1:8000/upload/semantic
+* Select Body → form-data
+* Key = files
+* Type = File
+* Select one or more PDF files from your device
 
-Testing in Postman: select the body type as form-data where: key = "files" , type = File and select the necessary file from the device 
+Expected Result:
 
-Expected result : **{"message" : "PDF uploaded succesfully. Index created"}**
+```json
+{
+  "message": "PDF uploaded successfully. Index created"
+}
+```
 
+---
 
+#### b. Query DocuMind and get a response
 
-\#### b. Query DocuMind and get the response: **http://127.0.0.1:8000/query/query\_text** [POST]
+**POST**
 
-Example: http://127.0.0.1:8000/query/Is Machine Learning a subset of Artificial Intelligence
+```text
+http://127.0.0.1:8000/query/query_text
+```
 
-Expected result : **{"response" : "response to the users query" , "cached" : true/false}**
+Example:
 
+```text
+http://127.0.0.1:8000/query/Is Machine Learning a subset of Artificial Intelligence
+```
 
-\#### c. Evaluate the retrieved chunks: **http://127.0.0.1:8000/evaluate** [GET]
+Expected Result:
 
-Expected result: Calculated coherence, windowed coherence and readability calculated using textstat
+```json
+{
+  "response": "response to the users query",
+  "cached": true
+}
+```
 
+or
 
+```json
+{
+  "response": "response to the users query",
+  "cached": false
+}
+```
 
+---
 
+#### c. Evaluate Retrieved Chunks
 
+**GET**
+
+```text
+http://127.0.0.1:8000/evaluate
+```
+
+Expected Result:
+
+* Coherence Score
+* Windowed Coherence Score
+* Readability Score
+
+Calculated using TextStat.
+
+---
+
+## 🐳 Docker Deployment
+
+### Build Image
+
+```bash
+docker build -t documind .
+```
+
+### Create Network
+
+```bash
+docker network create documind-network
+```
+
+### Run Redis
+
+```bash
+docker run -d --name redis-server --network documind-network redis
+```
+
+### Run API
+
+```bash
+docker run -d \
+--name documind-api \
+--network documind-network \
+-p 8000:8000 \
+documind
+```
+
+---
+
+## 🐳 Docker Compose (Recommended)
+
+Run the complete application stack:
+
+```bash
+docker compose up -d --build
+```
+
+This automatically:
+
+* Builds the API image
+* Creates the Docker network
+* Starts Redis
+* Starts FastAPI
+* Connects all services together
+
+To stop all services:
+
+```bash
+docker compose down
+```
+
+---
+
+## 📈 Retrieval Pipeline
+
+1. User uploads PDF documents
+2. Documents are cleaned and filtered
+3. Chunks are generated using the selected chunking strategy
+4. Dense embeddings are created and stored in FAISS
+5. Sparse BM25 indexes are created
+6. User submits a query
+7. FAISS and BM25 retrieve relevant chunks independently
+8. Reciprocal Rank Fusion (RRF) combines both retrieval results
+9. Cross-Encoder reranks the fused results
+10. Top-ranked chunks are used as context
+11. Redis checks for cached responses
+12. Mistral generates the final answer
+13. Response is returned to the user
+
+---
+
+## 🎯 Future Improvements
+
+* User-specific knowledge bases
+* Persistent vector database support
+* Frontend dashboard
+* Authentication and user management
+* Cloud deployment (AWS/Azure)
+* Streaming LLM responses
+* Evaluation dashboard for retrieval performance
