@@ -1,0 +1,12 @@
+services:
+    redis:
+        image: redis
+        container_name: redis-server
+
+    api:
+        build: .
+        container_name: documind-api
+        ports:
+            - "8000:8000"
+        depends_on: 
+            - redis
