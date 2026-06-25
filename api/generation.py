@@ -15,7 +15,7 @@ import requests
 
 def generate_answer(prompt):
     response = requests.post(
-        "http://localhost:11434/api/generate",
+        "http://host.docker.internal:11434/api/generate",
         json={
             "model": "mistral",
             "prompt": prompt,
