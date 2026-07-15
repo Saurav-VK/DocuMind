@@ -18,6 +18,7 @@ from Create_BM25_Index import *
 from BM25_retreival import *
 from reciprocal_ranking_fusion import *
 from ReRanker import *
+from evaluate_RAG import *
 import redis
 
 # In[4]:
@@ -73,6 +74,8 @@ def query_response(query : str):
     if not hasattr(app.state , "chunks"):
         return {"error" : "Please Upload the PDF before querying"}
 
+    app.state.query = query
+
     normalized_query = normalize_query(query)
 
     cached = r.get(normalized_query)
@@ -105,6 +108,8 @@ def query_response(query : str):
 
     response = answer_query(query , cleaned_results)
 
+    app.state.response = response
+
     r.setex(normalized_query , 300 , response)
 
     return {
@@ -128,8 +133,15 @@ def evaluate_response():
 
     readability = evaluate_readability(chunk_content)
 
+    query = app.state.query
+
+    response = app.state.response
+
+    metrics = evaluate_RAG(query , chunk_content , response)
+
     return {
            "Coherence" : coherence , 
            "Window coherence for slow context drifting" : window_coherence ,
-           "Readability score" : readability
+           "Readability score" : readability ,
+           "Deep Eval Metrics" : metrics
            }

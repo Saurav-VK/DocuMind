@@ -18,6 +18,7 @@ from Create_BM25_Index import *
 from BM25_retreival import *
 from reciprocal_ranking_fusion import *
 from ReRanker import *
+from evaluate_RAG import *
 import redis
 
 # In[4]:
@@ -35,10 +36,10 @@ for file in os.listdir(UPLOAD_DIR):
 app = FastAPI()
 
 @app.post("/upload/{strategy}")
-def upload_and_store(strategy : str , files = List(UploadFile) = File(...)):
+def upload_and_store(strategy : str , files : List[UploadFile] = File(...)):
 
     for file in files:
-        file_path = os.path.join(UPLOAD_DIR , file.filename)
+        file_path = os.path.join(UPLOAD_DIR , file.filename)    
         with open(file_path , "wb") as f:
             f.write(file.file.read())
     
@@ -66,11 +67,14 @@ def normalize_query(query):
     return query.lower().strip()
 
 
-r = redis.Redis(host = os.getenv("REDIS_HOST" , "redis") , port = os.getenv("REDIS_PORT" , 6379) , db = 0)
+r = redis.Redis(host = os.getenv("REDIS_HOST" , "redis") , 
+                port = int(os.getenv("REDIS_PORT" ,6379)) , db = 0)
 @app.post("/query/{query}")
 def query_response(query : str):
     if not hasattr(app.state , "chunks"):
         return {"error" : "Please Upload the PDF before querying"}
+
+    app.state.query = query
 
     normalized_query = normalize_query(query)
 
@@ -104,6 +108,8 @@ def query_response(query : str):
 
     response = answer_query(query , cleaned_results)
 
+    app.state.response = response
+
     r.setex(normalized_query , 300 , response)
 
     return {
@@ -127,8 +133,15 @@ def evaluate_response():
 
     readability = evaluate_readability(chunk_content)
 
+    query = app.state.query
+
+    response = app.state.response
+
+    metrics = evaluate_RAG(query , chunk_content , response)
+
     return {
            "Coherence" : coherence , 
            "Window coherence for slow context drifting" : window_coherence ,
-           "Readability score" : readability
+           "Readability score" : readability ,
+           "Deep Eval Metrics" : metrics
            }

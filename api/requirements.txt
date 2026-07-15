@@ -14,3 +14,4 @@ redis
 rank-bm25
 langchain-text-splitters
 python-multipart
+deepeval
