@@ -27,7 +27,13 @@ def generate_answer(prompt):
         }
     )
 
-    return response.json()["response"]
+    output = response.json()["response"]
+
+    print("\n" + "=" * 80)
+    print(output)
+    print("=" * 80 + "\n")
+
+    return output
 
 
 # In[3]:

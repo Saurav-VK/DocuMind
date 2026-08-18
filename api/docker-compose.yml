@@ -2,6 +2,8 @@ services:
     redis:
         image: redis
         container_name: redis-server
+        volumes:
+            - redis_data:/data
 
     api:
         build: .
@@ -10,5 +12,13 @@ services:
         container_name: documind-api
         ports:
             - "8000:8000"
-        depends_on: 
+        depends_on:
             - redis
+        volumes:
+            - rag_storage:/app/storage
+            - pdf_storage:/app/uploaded_pdfs
+
+volumes:
+    redis_data:
+    rag_storage:
+    pdf_storage:

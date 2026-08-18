@@ -19,6 +19,9 @@ from BM25_retreival import *
 from reciprocal_ranking_fusion import *
 from ReRanker import *
 from evaluate_RAG import *
+from document_hasher import *
+from storage_utils import *
+from document_processor import *  
 import redis
 
 # In[4]:
@@ -30,6 +33,9 @@ from typing import List
 UPLOAD_DIR = "uploaded_pdfs"
 os.makedirs(UPLOAD_DIR , exist_ok = True)
 
+STORAGE_DIR = "storage"
+os.makedirs(STORAGE_DIR , exist_ok = True)
+
 for file in os.listdir(UPLOAD_DIR):
     os.remove(os.path.join(UPLOAD_DIR, file))
 
@@ -38,30 +44,27 @@ app = FastAPI()
 @app.post("/upload/{strategy}")
 def upload_and_store(strategy : str , files : List[UploadFile] = File(...)):
 
+    all_chunks = []
+    all_faiss_indexes = []
+    all_bm25_indexes = []
+
     for file in files:
-        file_path = os.path.join(UPLOAD_DIR , file.filename)    
+        file_path = os.path.join(UPLOAD_DIR , file.filename)
+
         with open(file_path , "wb") as f:
             f.write(file.file.read())
-    
-    content = load_multiple_pdfs(UPLOAD_DIR)
 
-    pages = [page for page in content if is_valid_page(page)]
+        chunks , faiss_index , bm25_index = process_documents(file_path , strategy , STORAGE_DIR)
 
-    chunks = text_chunker(pages , strategy = strategy)
+        all_chunks.append(chunks)
+        all_faiss_indexes.append(faiss_index)
+        all_bm25_indexes.append(bm25_index)
 
-    chunks = [chunk for chunk in chunks if is_valid_chunk(chunk)]
+        app.state.chunks = all_chunks
+        app.state.faiss_indexes = all_faiss_indexes
+        app.state.bm25_indexes = all_bm25_indexes
 
-    app.state.chunks = chunks
-
-    bm25_index = create_bm25_index(chunks)
-
-    index = create_vector_store(chunks)
-
-    app.state.index = index
-
-    app.state.bm25_index = bm25_index
-
-    return {"message" : "PDF uploaded succesfully. Index created"}
+        return {"message" : "PDF uploaded and processed succesfully. Index created"}
 
 def normalize_query(query):
     return query.lower().strip()
@@ -86,17 +89,15 @@ def query_response(query : str):
                "cached" : True
                }
     
-    chunks = app.state.chunks
+    all_chunks = app.state.chunks
     
-    index = app.state.index
+    all_faiss_indexes = app.state.index
 
-    bm25_index = app.state.bm25_index
+    all_bm25_indexes = app.state.bm25_index
 
-    results_faiss = retrieve_chunks(query , chunks , index)
+    all_faiss_results , all_bm25_results = retrieve_from_multiple_pdfs(query , all_chunks , all_faiss_indexes , all_bm25_indexes , k = 5)
 
-    results_bm25 = bm25_retreival(normalized_query , bm25_index , chunks , k = 5)
-
-    rrf_chunks = reciprocal_rank_fusion(results_faiss , results_bm25)
+    rrf_chunks = reciprocal_rank_fusion(all_faiss_results , all_bm25_results)
 
     results = reranker_function(query , rrf_chunks)
 

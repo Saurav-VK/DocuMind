@@ -33,8 +33,25 @@ def load_multiple_pdfs(path):
     return text
 
 
-# In[ ]:
+def load_single_pdf(file_path):
 
+    text = []
+
+    pdf_reader = PdfReader(file_path)
+
+    file_name = os.path.basename(file_path)
+
+    for page_num, page in enumerate(pdf_reader.pages):
+
+        content = {}
+
+        content["page"] = page_num
+        content["text"] = page.extract_text() or ""
+        content["source"] = file_name
+
+        text.append(content)
+
+    return text
 
 
 
