@@ -23,6 +23,8 @@ from document_hasher import *
 from storage_utils import *
 from document_processor import *  
 from multi_pdf_retrieval import *
+from logger import logger
+import time
 import redis
 
 # In[4]:
@@ -42,20 +44,40 @@ os.makedirs(STORAGE_DIR , exist_ok = True)
 
 app = FastAPI()
 
+logger.info("DocuMind API initialized")
+
 @app.post("/upload/{strategy}")
 def upload_and_store(strategy : str , files : List[UploadFile] = File(...)):
+
+    logger.info(
+    "Upload started | files=%d | strategy=%s",
+    len(files),
+    strategy
+    )
 
     all_chunks = []
     all_faiss_indexes = []
     all_bm25_indexes = []
 
     for file in files:
+
+        logger.info(
+        "Processing uploaded document | file=%s",
+        file.filename
+        )
+
         file_path = os.path.join(UPLOAD_DIR , file.filename)
 
         with open(file_path , "wb") as f:
             f.write(file.file.read())
 
         chunks , faiss_index , bm25_index = process_documents(file_path , strategy , STORAGE_DIR)
+
+        logger.info(
+        "Document ready | file=%s | chunks=%d",
+        file.filename,
+        len(chunks)
+        )
 
         all_chunks.append(chunks)
         all_faiss_indexes.append(faiss_index)
@@ -64,6 +86,11 @@ def upload_and_store(strategy : str , files : List[UploadFile] = File(...)):
     app.state.chunks = all_chunks
     app.state.faiss_indexes = all_faiss_indexes
     app.state.bm25_indexes = all_bm25_indexes
+
+    logger.info(
+    "Upload completed | files=%d",
+    len(files)
+    )
 
     return {"message" : "PDF uploaded and processed succesfully. Index created"}
 
@@ -75,6 +102,11 @@ r = redis.Redis(host = os.getenv("REDIS_HOST" , "redis") ,
                 port = int(os.getenv("REDIS_PORT" ,6379)) , db = 0)
 @app.post("/query/{query}")
 def query_response(query : str):
+
+    start_time = time.perf_counter()
+
+    logger.info("Query received")
+
     if not hasattr(app.state , "chunks"):
         return {"error" : "Please Upload the PDF before querying"}
 
@@ -85,10 +117,20 @@ def query_response(query : str):
     cached = r.get(normalized_query)
 
     if cached:
+
+        elapsed = time.perf_counter() - start_time
+
+        logger.info(
+        "Cache hit | time=%.3fs",
+        elapsed
+        )
+
         return {
                "response" : cached.decode() ,
                "cached" : True
                }
+
+    logger.info("Cache miss")
     
     all_chunks = app.state.chunks
     
@@ -98,9 +140,25 @@ def query_response(query : str):
 
     all_faiss_results , all_bm25_results = retrieve_from_multiple_pdfs(query , all_chunks , all_faiss_indexes , all_bm25_indexes , k = 5)
 
+    logger.info(
+    "Retrieval completed | faiss_results=%d | bm25_results=%d",
+    len(all_faiss_results),
+    len(all_bm25_results)
+    )
+
     rrf_chunks = reciprocal_rank_fusion(all_faiss_results , all_bm25_results)
 
+    logger.info(
+    "RRF completed | candidates=%d",
+    len(rrf_chunks)
+    )
+
     results = reranker_function(query , rrf_chunks)
+
+    logger.info(
+    "Cross-encoder reranking completed | results=%d",
+    len(results)
+    )
 
     app.state.retrieved_chunks = results
 
@@ -108,11 +166,29 @@ def query_response(query : str):
 
     print(cleaned_results)
 
-    response = answer_query(query , cleaned_results)
+    logger.info("LLM generation started")
+
+    try:
+
+        response = answer_query(query , cleaned_results)
+
+    except Exception:
+   
+        logger.exception("LLM Generation failed")
+        raise
+
+    logger.info("LLM generation completed")
 
     app.state.response = response
 
     r.setex(normalized_query , 300 , response)
+
+    elapsed = time.perf_counter() - start_time
+
+    logger.info(
+        "Query completed | cached=False | time=%.3fs",
+        elapsed
+    )
 
     return {
             "response" : response ,
@@ -122,6 +198,9 @@ def query_response(query : str):
 
 @app.get("/evaluate")
 def evaluate_response():
+
+    logger.info("Evaluation started")
+
     if not hasattr(app.state , "retrieved_chunks"):
         return {"error" : "Please pass a query before evaluation."}
 
@@ -131,15 +210,27 @@ def evaluate_response():
 
     coherence = evaluate_coherence(chunk_content)
 
+    logger.info("Coherence metric completed")
+
     window_coherence = evaluate_window_coherence(chunk_content)
 
+    logger.info("windowed coherence metric completed")
+
     readability = evaluate_readability(chunk_content)
+
+    logger.info("readability metric completed")
 
     query = app.state.query
 
     response = app.state.response
 
+    logger.info("DeepEval started")
+
     metrics = evaluate_RAG(query , chunk_content , response)
+
+    logger.info("DeepEval completed")
+
+    logger.info("Evaluation completed")
 
     return {
            "Coherence" : coherence , 

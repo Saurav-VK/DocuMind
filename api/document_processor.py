@@ -15,9 +15,12 @@ from storage_utils import (
     save_bm25_index,
     load_bm25_index
 )
-
+from logger import logger
+import time
 
 def process_documents(file_path, strategy, storage_dir):
+
+    start_time = time.perf_counter()
 
     document_hash = generate_document_hash(
         file_path,
@@ -55,8 +58,13 @@ def process_documents(file_path, strategy, storage_dir):
         and os.path.exists(faiss_file)
         and os.path.exists(bm25_file)
     ):
+  
+        elapsed = time.perf_counter() - start_time
 
-        print("Document already exists. Loading saved indices...")
+        logger.info(
+        "Existing document found | file=%s",
+        os.path.basename(file_path)
+        )
 
         chunks = load_chunks(document_dir)
 
@@ -64,10 +72,22 @@ def process_documents(file_path, strategy, storage_dir):
 
         bm25_index = load_bm25_index(document_dir)
 
+        elapsed = time.perf_counter() - start_time
+
+        logger.info(
+        "Document processing completed | file=%s | chunks=%d | time=%.3fs",
+        os.path.basename(file_path),
+        len(chunks),
+        elapsed
+        )
+
         return chunks, faiss_index, bm25_index
 
     # Process new document
-    print("Processing new document...")
+    logger.info(
+    "Processing new document | file=%s",
+    os.path.basename(file_path)
+    )
 
     content = load_single_pdf(file_path)
 
@@ -107,6 +127,15 @@ def process_documents(file_path, strategy, storage_dir):
     save_bm25_index(
         bm25_index,
         document_dir
+    )
+
+    elapsed = time.perf_counter() - start_time
+
+    logger.info(
+    "Document processing completed | file=%s | chunks=%d | time=%.3fs",
+    os.path.basename(file_path),
+    len(chunks),
+    elapsed
     )
 
     return chunks, faiss_index, bm25_index
