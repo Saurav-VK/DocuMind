@@ -26,11 +26,15 @@ from multi_pdf_retrieval import *
 from logger import logger
 import time
 import redis
+import shutil
+import hashlib
+from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 # In[4]:
 
 
-from fastapi import FastAPI , UploadFile , File
+from fastapi import FastAPI , UploadFile , File , Header
 from typing import List
 
 UPLOAD_DIR = "uploaded_pdfs"
@@ -44,10 +48,23 @@ os.makedirs(STORAGE_DIR , exist_ok = True)
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 logger.info("DocuMind API initialized")
 
 @app.post("/upload/{strategy}")
-def upload_and_store(strategy : str , files : List[UploadFile] = File(...)):
+def upload_and_store(strategy : str , files : List[UploadFile] = File(...) , x_client_id: str = Header(...)):
+
+    logger.info(
+    "Upload request | client_id=%s",
+    x_client_id
+    )
 
     logger.info(
     "Upload started | files=%d | strategy=%s",
@@ -71,7 +88,7 @@ def upload_and_store(strategy : str , files : List[UploadFile] = File(...)):
         with open(file_path , "wb") as f:
             f.write(file.file.read())
 
-        chunks , faiss_index , bm25_index = process_documents(file_path , strategy , STORAGE_DIR)
+        chunks , faiss_index , bm25_index = process_documents(file_path , strategy , STORAGE_DIR , x_client_id)
 
         logger.info(
         "Document ready | file=%s | chunks=%d",
@@ -83,10 +100,6 @@ def upload_and_store(strategy : str , files : List[UploadFile] = File(...)):
         all_faiss_indexes.append(faiss_index)
         all_bm25_indexes.append(bm25_index)
 
-    app.state.chunks = all_chunks
-    app.state.faiss_indexes = all_faiss_indexes
-    app.state.bm25_indexes = all_bm25_indexes
-
     logger.info(
     "Upload completed | files=%d",
     len(files)
@@ -97,24 +110,47 @@ def upload_and_store(strategy : str , files : List[UploadFile] = File(...)):
 def normalize_query(query):
     return query.lower().strip()
 
+def generate_cache_key(client_id , document_hashes , query):
+
+    normalized_query = normalize_query(query)
+
+    sorted_doc_hashes = sorted(document_hashes)
+
+    raw_key = (client_id + ":" + ":".join(sorted_doc_hashes) + ":" + normalized_query)
+
+    cache_key = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+
+    return cache_key
+
 
 r = redis.Redis(host = os.getenv("REDIS_HOST" , "redis") , 
                 port = int(os.getenv("REDIS_PORT" ,6379)) , db = 0)
-@app.post("/query/{query}")
-def query_response(query : str):
+
+class QueryRequest(BaseModel):
+    query : str
+    documents : List[str]
+
+@app.post("/query")
+def query_response(request : QueryRequest , x_client_id : str = Header(...)):
 
     start_time = time.perf_counter()
 
-    logger.info("Query received")
+    query = request.query
+    document_hashes = request.documents
 
-    if not hasattr(app.state , "chunks"):
-        return {"error" : "Please Upload the PDF before querying"}
+    logger.info("Query received")
 
     app.state.query = query
 
     normalized_query = normalize_query(query)
 
-    cached = r.get(normalized_query)
+    cache_key = generate_cache_key(
+    x_client_id,
+    document_hashes,
+    query
+    )
+
+    cached = r.get(cache_key)
 
     if cached:
 
@@ -132,11 +168,27 @@ def query_response(query : str):
 
     logger.info("Cache miss")
     
-    all_chunks = app.state.chunks
+    all_chunks = []
     
-    all_faiss_indexes = app.state.faiss_indexes
+    all_faiss_indexes = []
 
-    all_bm25_indexes = app.state.bm25_indexes
+    all_bm25_indexes = []
+
+    for document_hash in document_hashes:
+
+        document_dir = os.path.join(STORAGE_DIR , x_client_id , document_hash)
+
+        if not os.path.exists(document_dir):
+            return {"error" : f"Document not found: {document_hash}"}
+
+        chunks = load_chunks(document_dir)
+        faiss_index = load_faiss_index(document_dir)
+        bm25_index = load_bm25_index(document_dir)
+
+        all_chunks.append(chunks)
+        all_faiss_indexes.append(faiss_index)
+        all_bm25_indexes.append(bm25_index)
+
 
     all_faiss_results , all_bm25_results = retrieve_from_multiple_pdfs(query , all_chunks , all_faiss_indexes , all_bm25_indexes , k = 5)
 
@@ -181,7 +233,7 @@ def query_response(query : str):
 
     app.state.response = response
 
-    r.setex(normalized_query , 300 , response)
+    r.setex(cache_key , 300 , response)
 
     elapsed = time.perf_counter() - start_time
 
@@ -238,3 +290,70 @@ def evaluate_response():
            "Readability score" : readability ,
            "Deep Eval Metrics" : metrics
            }
+
+@app.get("/documents")
+def get_documents(x_client_id : str = Header(...)):
+
+    client_dir = os.path.join(STORAGE_DIR , x_client_id)
+
+    logger.info(
+        "Documents request | client_id=%s | client_dir=%s",
+        x_client_id,
+        client_dir
+               )
+
+    if not os.path.exists(client_dir):
+        logger.warning("Client directory does not exist")
+        return []
+
+    logger.info(
+        "Client directory contents: %s",
+        os.listdir(client_dir)
+    )
+
+    documents = []
+
+    for document_hash in os.listdir(client_dir):
+
+        document_dir = os.path.join(client_dir , document_hash)
+
+        logger.info(
+            "Checking document directory: %s",
+            document_dir
+                   )
+
+        if not os.path.isdir(document_dir):
+            continue
+
+        metadata_file = os.path.join(document_dir , "metadata.json")
+
+        logger.info(
+            "Metadata exists: %s",
+            os.path.exists(metadata_file)
+                   )
+
+        if not os.path.exists(metadata_file):
+            continue
+
+        metadata = load_metadata(document_dir)
+
+        documents.append(metadata)
+
+    return documents
+
+@app.delete("/documents/{document_hash}")
+def delete_document(document_hash : str , x_client_id : str = Header(...)):
+
+    document_dir = os.path.join(STORAGE_DIR , x_client_id  , document_hash)
+
+    if not os.path.exists(document_dir):
+
+        logger.warning("Delete failed | client_id = %s | document_hash = %s | document not found" , x_client_id , document_hash)
+
+        return {"error" : "Document not found"}
+
+    shutil.rmtree(document_dir)
+
+    logger.info("Document deleted | client_id = %s | document_hash = %s" , x_client_id , document_hash)
+
+    return {"message" : "Document deleted successfully"}
