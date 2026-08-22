@@ -212,6 +212,20 @@ function App() {
         <h2>Upload Documents</h2>
         <h3>Up to 5 PDFs / 100 pages total per upload</h3>
 
+        <div className="data-warning">
+          <span>⚠️</span>
+
+          <div>
+            <strong>Demo Notice</strong>
+            <p>
+              DocuMind is a portfolio demonstration and does not currently
+              provide authenticated user accounts. Do not upload confidential,
+              sensitive, or personally identifiable documents.
+            </p>
+          </div>
+        </div>
+        <br></br>
+
         <div className="upload-controls">
           <input
             type="file"
