@@ -1,1 +1,5 @@
-.env
+api/.env
+api/frontend/.env
+api/frontend/node modules/
+__pycache__/
+*.pyc

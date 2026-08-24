@@ -649,3 +649,86 @@ button:disabled {
   margin-top: 7px;
 }
 
+.evaluate-button {
+  margin-top: 18px;
+  padding: 10px 18px;
+
+  border: none;
+  border-radius: 9px;
+
+  font-weight: 600;
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.evaluate-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.evaluate-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.evaluate-button .spinner {
+  margin-right: 8px;
+}
+
+.evaluation-card {
+  margin-top: 22px;
+  padding: 20px;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.evaluation-card h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.evaluation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  padding: 14px;
+
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.metric span {
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+
+.metric strong {
+  font-size: 1.25rem;
+}
+
+.upload-error {
+  margin-top: 14px;
+  padding: 12px 14px;
+
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 10px;
+
+  background: rgba(239, 68, 68, 0.08);
+  color: #fca5a5;
+
+  font-size: 0.88rem;
+}

@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import "./App.css";
 
 function App() {
+  //configurable api url
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // Unique ID representing this browser/client
   const [clientId, setClientId] = useState("");
 
@@ -26,11 +29,23 @@ function App() {
   // Cache status
   const [cached, setCached] = useState(null);
 
-  // Loading state
+  // Query loading state
   const [loading, setLoading] = useState(false);
 
-  //loading page
+  // Upload loading state
   const [uploadLoading, setUploadLoading] = useState(false);
+
+  // Evaluation results
+  const [evaluation, setEvaluation] = useState(null);
+
+  // Evaluation loading state
+  const [evaluationLoading, setEvaluationLoading] = useState(false);
+
+  //Upload limits
+  const [uploadError, setUploadError] = useState("");
+
+  //LLM error handling
+  const [queryError, setQueryError] = useState("");
 
   // --------------------------------------------------
   // FETCH DOCUMENTS
@@ -38,7 +53,7 @@ function App() {
 
   const fetchDocuments = async (id) => {
     try {
-      const response = await fetch("http://localhost:8000/documents", {
+      const response = await fetch(`${API_URL}/documents`, {
         method: "GET",
         headers: {
           "X-Client-ID": id,
@@ -68,10 +83,11 @@ function App() {
       formData.append("files", file);
     });
 
+    setUploadError("");
     setUploadLoading(true);
 
     try {
-      const response = await fetch(`http://localhost:8000/upload/${strategy}`, {
+      const response = await fetch(`${API_URL}/upload/${strategy}`, {
         method: "POST",
         headers: {
           "X-Client-ID": clientId,
@@ -81,18 +97,21 @@ function App() {
 
       const data = await response.json();
 
-      console.log(data);
+      if (!response.ok) {
+        throw new Error(data.detail || "Upload failed. Please try again.");
+      }
 
       await fetchDocuments(clientId);
 
       setSelectedFiles([]);
     } catch (error) {
       console.error("Upload failed:", error);
+
+      setUploadError(error.message);
     } finally {
       setUploadLoading(false);
     }
   };
-
   // --------------------------------------------------
   // DELETE DOCUMENT
   // --------------------------------------------------
@@ -100,7 +119,7 @@ function App() {
   const deleteDocument = async (documentHash) => {
     try {
       const response = await fetch(
-        `http://localhost:8000/documents/${documentHash}`,
+        `${API_URL}/documents/${documentHash}`,
         {
           method: "DELETE",
           headers: {
@@ -150,10 +169,15 @@ function App() {
       return;
     }
 
+    // Remove old evaluation when a new query begins
+    setEvaluation(null);
+    
+    setQueryError("");
+
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/query", {
+      const response = await fetch(`${API_URL}/query`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -167,12 +191,50 @@ function App() {
 
       const data = await response.json();
 
+      if (!response.ok) {
+        throw new Error(data.detail || "Query failed. Please try again.");
+
+      }
+
       setAnswer(data.response);
       setCached(data.cached);
     } catch (error) {
       console.error("Query failed:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // --------------------------------------------------
+  // EVALUATE RESPONSE
+  // --------------------------------------------------
+
+  const evaluateResponse = async () => {
+    setEvaluationLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/evaluate`, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          "X-Client-ID": clientId,
+        },
+
+        body: JSON.stringify({
+          query: query,
+          answer: answer,
+          documents: selectedDocuments,
+        }),
+      });
+
+      const data = await response.json();
+
+      setEvaluation(data);
+    } catch (error) {
+      console.error("Evaluation failed:", error);
+    } finally {
+      setEvaluationLoading(false);
     }
   };
 
@@ -202,29 +264,32 @@ function App() {
         <h1>DocuMind</h1>
 
         <p>Chat with your documents.</p>
-
-        {/* <p className="client-id">Client ID: {clientId}</p> */}
       </div>
+
+      {/* DEMO NOTICE */}
+
+      <div className="data-warning">
+        <span>⚠️</span>
+
+        <div>
+          <strong>Demo Notice</strong>
+
+          <p>
+            DocuMind is a portfolio demonstration and does not currently provide
+            authenticated user accounts. Do not upload confidential, sensitive,
+            or personally identifiable documents.
+          </p>
+        </div>
+      </div>
+
+      <br></br>
 
       {/* UPLOAD */}
 
       <div className="card">
         <h2>Upload Documents</h2>
-        <h3>Up to 5 PDFs / 100 pages total per upload</h3>
 
-        <div className="data-warning">
-          <span>⚠️</span>
-
-          <div>
-            <strong>Demo Notice</strong>
-            <p>
-              DocuMind is a portfolio demonstration and does not currently
-              provide authenticated user accounts. Do not upload confidential,
-              sensitive, or personally identifiable documents.
-            </p>
-          </div>
-        </div>
-        <br></br>
+        <h3>Up to 5 PDFs / 30 pages total per upload</h3>
 
         <div className="upload-controls">
           <input
@@ -252,6 +317,8 @@ function App() {
             Upload
           </button>
         </div>
+
+        {uploadError && <div className="upload-error">⚠️ {uploadError}</div>}
       </div>
 
       {/* DOCUMENTS */}
@@ -338,17 +405,95 @@ function App() {
           </button>
         </div>
 
+        {queryError && (
+          <div className="upload-error">
+            ⚠️ {queryError}
+          </div>
+        )}
+
+        {/* ANSWER */}
+
         {answer && (
           <div className="answer-card">
             <h3>Answer</h3>
+
             <p>{answer}</p>
+
+            <button
+              className="evaluate-button"
+              onClick={evaluateResponse}
+              disabled={evaluationLoading}
+            >
+              {evaluationLoading ? (
+                <>
+                  <span className="spinner"></span>
+                  Evaluating...
+                </>
+              ) : (
+                "Evaluate Response"
+              )}
+            </button>
           </div>
         )}
+
+        {/* CACHE STATUS */}
 
         {cached !== null && (
           <span className="cache-status">
             {cached ? "⚡ Retrieved from cache" : "Generated by DocuMind"}
           </span>
+        )}
+
+        {/* EVALUATION RESULTS */}
+
+        {evaluation && (
+          <div className="evaluation-card">
+            <h3>Evaluation Results</h3>
+
+            <div className="evaluation-grid">
+              <div className="metric">
+                <span>Coherence</span>
+
+                <strong>{evaluation["Coherence"]?.toFixed(3)}</strong>
+              </div>
+
+              <div className="metric">
+                <span>Window Coherence</span>
+
+                <strong>
+                  {evaluation[
+                    "Window coherence for slow context drifting"
+                  ]?.toFixed(3)}
+                </strong>
+              </div>
+
+              <div className="metric">
+                <span>Readability</span>
+
+                <strong>{evaluation["Readability score"]?.toFixed(3)}</strong>
+              </div>
+
+              <div className="metric">
+                <span>Faithfulness</span>
+
+                <strong>
+                  {evaluation["Deep Eval Metrics"]?.FaithfulnessMetric?.toFixed(
+                    3,
+                  )}
+                </strong>
+              </div>
+
+              <div className="metric">
+                <span>Answer Relevancy</span>
+
+                <strong>
+                  {evaluation[
+                    "Deep Eval Metrics"
+                  ]?.AnswerRelevancyMetric?.toFixed(3)}
+                </strong>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 

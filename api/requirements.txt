@@ -15,3 +15,4 @@ rank-bm25
 langchain-text-splitters
 python-multipart
 deepeval
+google-genai

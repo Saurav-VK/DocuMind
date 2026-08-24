@@ -30,6 +30,7 @@ import shutil
 import hashlib
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import HTTPException
 
 # In[4]:
 
@@ -48,6 +49,8 @@ os.makedirs(STORAGE_DIR , exist_ok = True)
 
 app = FastAPI()
 
+FRONTEND_URL = os.getenv("FRONTEND_URL" , "http://localhost:5173")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -58,54 +61,84 @@ app.add_middleware(
 
 logger.info("DocuMind API initialized")
 
+def rate_limiter(client_id , action , limit , window_seconds):
+
+    key = f"rate_limit:{action}:{client_id}"
+
+    current = r.incr(key)
+
+    if current == 1:
+        r.expire(key , window_seconds)
+
+    if current > limit:
+        raise HTTPException(status_code = 429 , detail = "Rate limit reached for {action}. Please try again later.")
+
 @app.post("/upload/{strategy}")
 def upload_and_store(strategy : str , files : List[UploadFile] = File(...) , x_client_id: str = Header(...)):
 
-    logger.info(
-    "Upload request | client_id=%s",
-    x_client_id
-    )
+    MAX_FILES = 5
+    MAX_PAGES = 30
 
-    logger.info(
-    "Upload started | files=%d | strategy=%s",
-    len(files),
-    strategy
-    )
+    logger.info("Uplaod request | client = %s" , x_client_id)
+    logger.info("Upload started | files = %d | strategy = %s" , len(files) , strategy)
 
-    all_chunks = []
-    all_faiss_indexes = []
-    all_bm25_indexes = []
+    if len(files) > MAX_FILES:
+        logger.warning("Upload rejected | client id = %s | files uploaded = %d | max files = %d" , x_client_id , len(files) , MAX_FILES)
+
+        raise HTTPException(
+            status_code=400,
+            detail=f"Maximum {MAX_FILES} PDFs allowed per upload"
+        )
+
+    saved_file_paths = []
+    total_pages = 0
 
     for file in files:
 
-        logger.info(
-        "Processing uploaded document | file=%s",
-        file.filename
-        )
+        if not file.filename.lower().endswith(".pdf"):
+
+            logger.warning("Upload rejected | invalid file type | file == %s" , file.filename)
+
+            return {"error" : f"Invalid file type detected: {file.filename}. Please upload pdfs only"}
+
+        logger.info("Receiving uploaded document | file = %s" , file.filename)
 
         file_path = os.path.join(UPLOAD_DIR , file.filename)
 
         with open(file_path , "wb") as f:
             f.write(file.file.read())
 
+        saved_file_paths.append(file_path)
+
+        pdf_reader = PdfReader(file_path)
+        total_pages += len(pdf_reader.pages)
+
+        logger.info("Page count checked | file = %s | pages = %d | total pages = %d", file.filename , len(pdf_reader.pages) , total_pages)
+
+        if total_pages > MAX_PAGES:
+
+            logger.warning("Upload rejected | client id = %s | total pages uploaded = %d | page limit = %d" , x_client_id , total_pages , MAX_PAGES)
+
+            raise HTTPException(
+                status_code=400,
+                detail=f"Maximum {MAX_PAGES} total pages allowed per upload"
+            )
+
+    for file_path in saved_file_paths:
+
+        file_name = os.path.basename(file_path)
+
+        logger.info("Processing uplaoded document | file = %s", file_name)
+
         chunks , faiss_index , bm25_index = process_documents(file_path , strategy , STORAGE_DIR , x_client_id)
 
-        logger.info(
-        "Document ready | file=%s | chunks=%d",
-        file.filename,
-        len(chunks)
-        )
+        logger.info("Document ready | file = %s | chunks = %d" , file_name , len(chunks))
 
-        all_chunks.append(chunks)
-        all_faiss_indexes.append(faiss_index)
-        all_bm25_indexes.append(bm25_index)
+    logger.info("Upload completed | files = %s | total pages = %d" , len(files) , total_pages)
 
-    logger.info(
-    "Upload completed | files=%d",
-    len(files)
-    )
+    return {"message" : "PDFs uploaded and processed succesfully."}        
 
-    return {"message" : "PDF uploaded and processed succesfully. Index created"}
+        
 
 def normalize_query(query):
     return query.lower().strip()
@@ -129,6 +162,11 @@ r = redis.Redis(host = os.getenv("REDIS_HOST" , "redis") ,
 class QueryRequest(BaseModel):
     query : str
     documents : List[str]
+
+class EvaluationRequest(BaseModel):
+    query: str
+    answer: str
+    documents: List[str]
 
 @app.post("/query")
 def query_response(request : QueryRequest , x_client_id : str = Header(...)):
@@ -248,41 +286,98 @@ def query_response(request : QueryRequest , x_client_id : str = Header(...)):
            }
 
 
-@app.get("/evaluate")
-def evaluate_response():
+@app.post("/evaluate")
+def evaluate_response(request : EvaluationRequest ,  x_client_id : str = Header(...)):
 
-    logger.info("Evaluation started")
+    logger.info("Evaluation started | client_id = %s" , x_client_id)
 
-    if not hasattr(app.state , "retrieved_chunks"):
-        return {"error" : "Please pass a query before evaluation."}
+    query = request.query
+    answer = request.answer
+    document_hashes = request.documents
 
-    retrieved_chunks = app.state.retrieved_chunks
+    all_chunks = []
+    all_faiss_indexes = []
+    all_bm25_indexes = []
 
-    chunk_content = [chunk["text"] for chunk in retrieved_chunks]
+    for document_hash in document_hashes:
+        document_dir = os.path.join(STORAGE_DIR , x_client_id , document_hash)
 
-    coherence = evaluate_coherence(chunk_content)
+        if not os.path.exists(document_dir):
+            return {"error" : f"Document not found : {document_hash}"}
 
-    logger.info("Coherence metric completed")
+        chunks = load_chunks(document_dir)
+        faiss_index = load_faiss_index(document_dir)
+        bm25_index = load_bm25_index(document_dir)
 
-    window_coherence = evaluate_window_coherence(chunk_content)
+        all_chunks.append(chunks)
+        all_faiss_indexes.append(faiss_index)
+        all_bm25_indexes.append(bm25_index)
 
-    logger.info("windowed coherence metric completed")
+    all_faiss_results, all_bm25_results = retrieve_from_multiple_pdfs(
+        query,
+        all_chunks,
+        all_faiss_indexes,
+        all_bm25_indexes,
+        k=5
+    )
 
-    readability = evaluate_readability(chunk_content)
+    rrf_chunks = reciprocal_rank_fusion(
+        all_faiss_results,
+        all_bm25_results
+    )
 
-    logger.info("readability metric completed")
+    retrieved_chunks = reranker_function(
+        query,
+        rrf_chunks
+    )
 
-    query = app.state.query
+    chunk_content = [
+        chunk["text"]
+        for chunk in retrieved_chunks
+    ]   
 
-    response = app.state.response
+    coherence = evaluate_coherence(
+        chunk_content
+    )
 
-    logger.info("DeepEval started")
+    logger.info(
+        "Coherence metric completed"
+    )
 
-    metrics = evaluate_RAG(query , chunk_content , response)
+    window_coherence = evaluate_window_coherence(
+        chunk_content
+    )
 
-    logger.info("DeepEval completed")
+    logger.info(
+        "Window coherence metric completed"
+    )
 
-    logger.info("Evaluation completed")
+    readability = evaluate_readability(
+        chunk_content
+    )
+
+    logger.info(
+        "Readability metric completed"
+    )
+
+    logger.info(
+        "DeepEval started"
+    )
+
+    metrics = evaluate_RAG(
+        query,
+        chunk_content,
+        answer
+    )
+
+    logger.info(
+        "DeepEval completed"
+    )
+
+    logger.info(
+        "Evaluation completed | client_id=%s",
+        x_client_id
+    )
 
     return {
            "Coherence" : coherence , 
@@ -290,6 +385,7 @@ def evaluate_response():
            "Readability score" : readability ,
            "Deep Eval Metrics" : metrics
            }
+
 
 @app.get("/documents")
 def get_documents(x_client_id : str = Header(...)):

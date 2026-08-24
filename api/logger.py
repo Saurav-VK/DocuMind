@@ -21,13 +21,4 @@ if not logger.handlers:
     logger.addHandler(handler)
 
 
-if __name__ == "__main__":
-
-    logger.debug("Debug message")
-
-    logger.info("Info message")
-
-    logger.warning("Warning message")
-
-    logger.error("Error message")
 

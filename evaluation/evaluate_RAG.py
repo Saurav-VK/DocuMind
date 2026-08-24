@@ -7,6 +7,7 @@
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import FaithfulnessMetric, AnswerRelevancyMetric
 from deepeval_ollama import OllamaJudge
+import os
 
 def evaluate_RAG(query , context , answer):
 
