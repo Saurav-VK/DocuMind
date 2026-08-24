@@ -11,7 +11,7 @@ from fastapi import HTTPException
 
 
 def build_context(cleaned_chunks):
-    return "\n\n".join(cleaned_chunks[:2])
+    return "\n\n".join(cleaned_chunks[:3])
 
 def generate_with_ollama(prompt):
 

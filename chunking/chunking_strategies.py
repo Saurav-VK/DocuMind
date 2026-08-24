@@ -15,12 +15,12 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 class ChunkingStrategies:
 
     def token_text_splitter(self , text):
-        splitter = TokenTextSplitter(chunk_size = 40, chunk_overlap = 10)
+        splitter = TokenTextSplitter(chunk_size = 200, chunk_overlap = 40)
         
         return splitter.split_text(text)
 
     def sentence_transformer_token_text_splitter(self , text):
-        splitter = SentenceTransformersTokenTextSplitter(chunk_size = 50)
+        splitter = SentenceTransformersTokenTextSplitter(chunk_size = 100)
         return splitter.split_text(text)
 
     def semantic_chunker(self , text):
@@ -28,7 +28,7 @@ class ChunkingStrategies:
         return splitter.split_text(text)
 
     def recursive_character_text_splitter(self , text):
-        splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size = 60 , chunk_overlap = 20)
+        splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size = 100 , chunk_overlap = 40)
         return splitter.split_text(text)
 
 
