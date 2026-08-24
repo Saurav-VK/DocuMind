@@ -45,12 +45,14 @@ def load_bm25_index(document_dir):
     with open (file_path , "rb") as f:
         return pickle.load(f)
 
-def save_metadata(document_dir, filename, document_hash, strategy):
+def save_metadata(document_dir, filename, document_hash, strategy, chunk_size = None, chunk_overlap = None):
 
     metadata = {
         "filename": filename,
         "document_hash": document_hash,
-        "strategy": strategy
+        "strategy": strategy,
+        "chunk_size": chunk_size,
+        "chunk_overlap": chunk_overlap
     }
 
     file_path = os.path.join(

@@ -13,22 +13,29 @@ from storage_utils import (
     save_faiss_index,
     load_faiss_index,
     save_bm25_index,
-    load_bm25_index
+    load_bm25_index,
+    save_metadata
 )
 from logger import logger
 import time
 
-def process_documents(file_path, strategy, storage_dir):
+def process_documents(file_path, strategy, storage_dir , client_id , chunk_size = None , chunk_overlap = None):
 
     start_time = time.perf_counter()
 
     document_hash = generate_document_hash(
         file_path,
-        strategy
+        strategy,
+        chunk_size,
+        chunk_overlap
     )
 
+    client_dir = os.path.join(storage_dir , client_id)
+    
+    os.makedirs(client_dir , exist_ok = True)
+
     document_dir = os.path.join(
-        storage_dir,
+        client_dir,
         document_hash
     )
 
@@ -99,7 +106,9 @@ def process_documents(file_path, strategy, storage_dir):
 
     chunks = text_chunker(
         pages,
-        strategy=strategy
+        strategy=strategy,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap
     )
 
     chunks = [
@@ -127,6 +136,15 @@ def process_documents(file_path, strategy, storage_dir):
     save_bm25_index(
         bm25_index,
         document_dir
+    )
+
+    save_metadata(
+    document_dir,
+    os.path.basename(file_path),
+    document_hash,
+    strategy,
+    chunk_size,
+    chunk_overlap
     )
 
     elapsed = time.perf_counter() - start_time

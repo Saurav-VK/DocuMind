@@ -1,6 +1,6 @@
 from chunking_strategies import *
 
-def text_chunker(pages , strategy = "recursive"):
+def text_chunker(pages , strategy = "recursive" , chunk_size=None , chunk_overlap=None):
 
     all_chunks = []
     
@@ -10,7 +10,7 @@ def text_chunker(pages , strategy = "recursive"):
     
     for page in pages:
         if strategy == "token":
-            chunks = chunker.token_text_splitter(page["text"])
+            chunks = chunker.token_text_splitter(page["text"], chunk_size = chunk_size or 200 , chunk_overlap = chunk_overlap or 40)
 
         elif strategy == "sentence":
             chunks = chunker.sentence_transformer_token_text_splitter(page["text"])
@@ -19,7 +19,7 @@ def text_chunker(pages , strategy = "recursive"):
             chunks = chunker.semantic_chunker(page["text"])
 
         elif strategy == "recursive":
-            chunks = chunker.recursive_character_text_splitter(page["text"])
+            chunks = chunker.recursive_character_text_splitter(page["text"] , chunk_size = chunk_size or 100 , chunk_overlap = chunk_overlap or 40)
 
         else:
             raise ValueError("Invalid Method")

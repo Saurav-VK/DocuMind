@@ -14,8 +14,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 class ChunkingStrategies:
 
-    def token_text_splitter(self , text):
-        splitter = TokenTextSplitter(chunk_size = 200, chunk_overlap = 40)
+    def token_text_splitter(self , text , chunk_size = 200 , chunk_overlap = 40):
+        splitter = TokenTextSplitter(chunk_size = chunk_size, chunk_overlap = chunk_overlap)
         
         return splitter.split_text(text)
 
@@ -27,8 +27,8 @@ class ChunkingStrategies:
         splitter = SemanticChunker(HuggingFaceEmbeddings())
         return splitter.split_text(text)
 
-    def recursive_character_text_splitter(self , text):
-        splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size = 100 , chunk_overlap = 40)
+    def recursive_character_text_splitter(self , text , chunk_size = 100 , chunk_overlap = 40):
+        splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size = chunk_size , chunk_overlap = chunk_overlap)
         return splitter.split_text(text)
 
 

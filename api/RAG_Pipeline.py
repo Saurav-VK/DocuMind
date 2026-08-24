@@ -35,7 +35,7 @@ from fastapi import HTTPException
 # In[4]:
 
 
-from fastapi import FastAPI , UploadFile , File , Header
+from fastapi import FastAPI , UploadFile , File , Header , Form
 from typing import List
 
 UPLOAD_DIR = "uploaded_pdfs"
@@ -82,10 +82,28 @@ def health_check():
 
 
 @app.post("/upload/{strategy}")
-def upload_and_store(strategy : str , files : List[UploadFile] = File(...) , x_client_id: str = Header(...)):
+def upload_and_store(strategy : str , files : List[UploadFile] = File(...) , chunk_size: int | None = Form(None) , chunk_overlap: int | None = Form(None), x_client_id: str = Header(...)):
 
     MAX_FILES = 5
     MAX_PAGES = 30
+
+    if strategy in ["token" , "recursive"]:
+
+        if chunk_size is None:
+            chunk_size = 200 if strategy == "token" else 100
+
+        if chunk_overlap is None:
+            chunk_overlap = 40
+
+        if chunk_size < 50 or chunk_size > 500:
+            raise HTTPException(status_code = 400 , detail = "Chunk size must be between 50 and 500")
+
+        if chunk_size < 0 or chunk_overlap >= chunk_size:
+            raise HTTPException(status_code = 400 , detail = "Chunk overlap must be gretaer than or equal to 0 and smaller than the chunk size")
+
+    else:
+        chunk_size = None
+        chunk_overlap = None
 
     logger.info("Uplaod request | client = %s" , x_client_id)
     logger.info("Upload started | files = %d | strategy = %s" , len(files) , strategy)
@@ -138,7 +156,7 @@ def upload_and_store(strategy : str , files : List[UploadFile] = File(...) , x_c
 
         logger.info("Processing uplaoded document | file = %s", file_name)
 
-        chunks , faiss_index , bm25_index = process_documents(file_path , strategy , STORAGE_DIR , x_client_id)
+        chunks , faiss_index , bm25_index = process_documents(file_path , strategy , STORAGE_DIR , x_client_id , chunk_size , chunk_overlap)
 
         logger.info("Document ready | file = %s | chunks = %d" , file_name , len(chunks))
 

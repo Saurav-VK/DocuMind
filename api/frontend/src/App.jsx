@@ -47,6 +47,12 @@ function App() {
   //LLM error handling
   const [queryError, setQueryError] = useState("");
 
+  //chunk size input
+  const [chunkSize, setChunkSize] = useState(200);
+
+  //chunk overlap variable
+  const [chunkOverlap, setChunkOverlap] = useState(40);
+
   // --------------------------------------------------
   // FETCH DOCUMENTS
   // --------------------------------------------------
@@ -77,11 +83,24 @@ function App() {
       return;
     }
 
+    if (
+      (strategy === "token" || strategy === "recursive") &&
+      chunkOverlap >= chunkSize
+    ) {
+      setUploadError("Chunk overlap must be smaller than chunk size.");
+      return;
+    }
+
     const formData = new FormData();
 
     selectedFiles.forEach((file) => {
       formData.append("files", file);
     });
+
+    if (strategy === "token" || strategy === "recursive") {
+      formData.append("chunk_size", chunkSize);
+      formData.append("chunk_overlap", chunkOverlap);
+    }
 
     setUploadError("");
     setUploadLoading(true);
@@ -106,27 +125,24 @@ function App() {
       setSelectedFiles([]);
     } catch (error) {
       console.error("Upload failed:", error);
-
       setUploadError(error.message);
     } finally {
       setUploadLoading(false);
     }
   };
+
   // --------------------------------------------------
   // DELETE DOCUMENT
   // --------------------------------------------------
 
   const deleteDocument = async (documentHash) => {
     try {
-      const response = await fetch(
-        `${API_URL}/documents/${documentHash}`,
-        {
-          method: "DELETE",
-          headers: {
-            "X-Client-ID": clientId,
-          },
+      const response = await fetch(`${API_URL}/documents/${documentHash}`, {
+        method: "DELETE",
+        headers: {
+          "X-Client-ID": clientId,
         },
-      );
+      });
 
       const data = await response.json();
 
@@ -171,7 +187,7 @@ function App() {
 
     // Remove old evaluation when a new query begins
     setEvaluation(null);
-    
+
     setQueryError("");
 
     setLoading(true);
@@ -193,7 +209,6 @@ function App() {
 
       if (!response.ok) {
         throw new Error(data.detail || "Query failed. Please try again.");
-
       }
 
       setAnswer(data.response);
@@ -304,7 +319,19 @@ function App() {
           <select
             value={strategy}
             onChange={(event) => {
-              setStrategy(event.target.value);
+              const newStrategy = event.target.value;
+
+              setStrategy(newStrategy);
+
+              if (newStrategy === "token") {
+                setChunkSize(200);
+                setChunkOverlap(40);
+              }
+
+              if (newStrategy === "recursive") {
+                setChunkSize(100);
+                setChunkOverlap(40);
+              }
             }}
           >
             <option value="semantic">Semantic</option>
@@ -312,6 +339,41 @@ function App() {
             <option value="sentence">Sentence</option>
             <option value="recursive">Recursive</option>
           </select>
+
+          {(strategy === "token" || strategy === "recursive") && (
+            <div className="chunk-settings">
+              <div className="chunk-setting">
+                <label>Chunk Size</label>
+
+                <input
+                  type="number"
+                  min="50"
+                  max="500"
+                  value={chunkSize}
+                  onChange={(event) => {
+                    setChunkSize(Number(event.target.value));
+                  }}
+                />
+
+                <small>Amount of text included in each chunk.</small>
+              </div>
+
+              <div className="chunk-setting">
+                <label>Chunk Overlap</label>
+
+                <input
+                  type="number"
+                  min="0"
+                  value={chunkOverlap}
+                  onChange={(event) => {
+                    setChunkOverlap(Number(event.target.value));
+                  }}
+                />
+
+                <small>Context shared between adjacent chunks.</small>
+              </div>
+            </div>
+          )}
 
           <button onClick={uploadDocuments} disabled={uploadLoading}>
             Upload
@@ -405,11 +467,7 @@ function App() {
           </button>
         </div>
 
-        {queryError && (
-          <div className="upload-error">
-            ⚠️ {queryError}
-          </div>
-        )}
+        {queryError && <div className="upload-error">⚠️ {queryError}</div>}
 
         {/* ANSWER */}
 
