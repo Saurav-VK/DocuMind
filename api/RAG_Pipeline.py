@@ -164,8 +164,19 @@ def generate_cache_key(client_id , document_hashes , query):
     return cache_key
 
 
-r = redis.Redis(host = os.getenv("REDIS_HOST" , "redis") , 
-                port = int(os.getenv("REDIS_PORT" ,6379)) , db = 0)
+REDIS_URL = os.getenv("REDIS_URL")
+
+if REDIS_URL:
+    r = redis.from_url(
+        REDIS_URL,
+        decode_responses=False
+    )
+else:
+    r = redis.Redis(
+        host=os.getenv("REDIS_HOST", "redis"),
+        port=int(os.getenv("REDIS_PORT", 6379)),
+        db=0
+    )
 
 class QueryRequest(BaseModel):
     query : str
