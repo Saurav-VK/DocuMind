@@ -73,6 +73,14 @@ def rate_limiter(client_id , action , limit , window_seconds):
     if current > limit:
         raise HTTPException(status_code = 429 , detail = "Rate limit reached for {action}. Please try again later.")
 
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "service": "DocuMind API"
+    }
+
+
 @app.post("/upload/{strategy}")
 def upload_and_store(strategy : str , files : List[UploadFile] = File(...) , x_client_id: str = Header(...)):
 
