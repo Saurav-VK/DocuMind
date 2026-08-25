@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import "./App.css";
 
 function App() {
@@ -215,6 +216,7 @@ function App() {
       setCached(data.cached);
     } catch (error) {
       console.error("Query failed:", error);
+      setQueryError(error.message);
     } finally {
       setLoading(false);
     }
@@ -475,7 +477,7 @@ function App() {
           <div className="answer-card">
             <h3>Answer</h3>
 
-            <p>{answer}</p>
+            <ReactMarkdown>{answer}</ReactMarkdown>
 
             <button
               className="evaluate-button"
