@@ -16,7 +16,7 @@ function App() {
   const [selectedFiles, setSelectedFiles] = useState([]);
 
   // Selected chunking strategy
-  const [strategy, setStrategy] = useState("semantic");
+  const [strategy, setStrategy] = useState("token");
 
   // Selected documents for querying
   const [selectedDocuments, setSelectedDocuments] = useState([]);
@@ -53,6 +53,9 @@ function App() {
 
   //chunk overlap variable
   const [chunkOverlap, setChunkOverlap] = useState(40);
+
+  //disabling semantic chunking in deployed app since railways free plan doesnt have sufficient resources
+  const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 
   // --------------------------------------------------
   // FETCH DOCUMENTS
@@ -336,7 +339,7 @@ function App() {
               }
             }}
           >
-            <option value="semantic">Semantic</option>
+            {isLocal && <option value="semantic">Semantic</option>}
             <option value="token">Token</option>
             <option value="sentence">Sentence</option>
             <option value="recursive">Recursive</option>
