@@ -55,7 +55,9 @@ function App() {
   const [chunkOverlap, setChunkOverlap] = useState(40);
 
   //disabling semantic chunking in deployed app since railways free plan doesnt have sufficient resources
-  const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  const isLocal =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
 
   // --------------------------------------------------
   // FETCH DOCUMENTS
@@ -583,6 +585,16 @@ function App() {
           </div>
         </div>
       )}
+      {/* DEPLOYMENT NOTE */}
+
+      <div className="deployment-note">
+        <strong>Deployment Note</strong>
+        <p>
+          Redis caching is disabled in the hosted demo due to free-tier
+          infrastructure constraints. Redis caching with a 5-minute TTL is fully
+          available when running DocuMind locally.
+        </p>
+      </div>
     </div>
   );
 }
