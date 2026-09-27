@@ -767,3 +767,144 @@ button:disabled {
     flex-direction: column;
   }
 }
+
+/* ==================================================
+   HOSTED BACKEND NOTICE
+   ================================================== */
+
+.hosting-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background: rgba(5, 8, 18, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.hosting-modal {
+  position: relative;
+
+  width: 100%;
+  max-width: 560px;
+
+  padding: 36px;
+
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5);
+
+  text-align: center;
+}
+
+.hosting-modal-icon {
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+.hosting-modal h2 {
+  margin: 0 0 18px;
+  font-size: 1.5rem;
+}
+
+.hosting-modal p {
+  margin: 0 0 14px;
+
+  color: #aab4c8;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.hosting-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+
+  padding: 0;
+
+  border: none;
+  background: transparent;
+
+  color: #8b95aa;
+  font-size: 1.6rem;
+
+  cursor: pointer;
+}
+
+.hosting-modal-close:hover {
+  color: #ffffff;
+}
+
+.hosting-modal-actions {
+  display: flex;
+  gap: 12px;
+
+  margin-top: 26px;
+}
+
+.hosting-primary-button,
+.hosting-secondary-button {
+  flex: 1;
+
+  padding: 11px 18px;
+
+  border-radius: 9px;
+
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.hosting-primary-button {
+  background: #6366f1;
+  color: white;
+}
+
+.hosting-secondary-button {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+}
+
+.hosting-primary-button:hover,
+.hosting-secondary-button:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+.hosting-continue-button {
+  margin-top: 18px;
+
+  border: none;
+  background: transparent;
+
+  color: #7f8ba3;
+  font-size: 0.82rem;
+
+  cursor: pointer;
+}
+
+.hosting-continue-button:hover {
+  color: #cbd5e1;
+}
+
+@media (max-width: 600px) {
+  .hosting-modal {
+    padding: 30px 22px;
+  }
+
+  .hosting-modal-actions {
+    flex-direction: column;
+  }
+}

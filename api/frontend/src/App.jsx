@@ -59,6 +59,9 @@ function App() {
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1";
 
+  // Hosted backend notice
+  const [showHostingNotice, setShowHostingNotice] = useState(!isLocal);
+
   // --------------------------------------------------
   // FETCH DOCUMENTS
   // --------------------------------------------------
@@ -280,6 +283,66 @@ function App() {
 
   return (
     <div className="app">
+      {/* HOSTED BACKEND NOTICE */}
+
+      {showHostingNotice && (
+        <div className="hosting-modal-overlay">
+          <div className="hosting-modal">
+            <button
+              className="hosting-modal-close"
+              onClick={() => setShowHostingNotice(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+
+            <div className="hosting-modal-icon">⚠️</div>
+
+            <h2>Hosted Demo Currently Unavailable</h2>
+
+            <p>
+              The hosted backend is currently offline because the free hosting
+              tier provides insufficient memory to run DocuMind's ML
+              dependencies, resulting in out-of-memory (OOM) errors.
+            </p>
+
+            <p>
+              DocuMind is fully functional when run locally. You can watch the
+              recorded demo to see the complete RAG pipeline in action, or run
+              the project locally using the setup instructions in the GitHub
+              repository.
+            </p>
+
+            <div className="hosting-modal-actions">
+              <a
+                href="/videos/Documind-Demo-Compressed.mp4"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hosting-primary-button"
+              >
+                ▶ Watch Demo
+              </a>
+
+              <a
+                href="https://github.com/Saurav-VK/DocuMind"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hosting-secondary-button"
+              >
+                View on GitHub
+              </a>
+            </div>
+
+            <button
+              className="hosting-continue-button"
+              onClick={() => setShowHostingNotice(false)}
+            >
+              Continue to UI
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* HEADER */}
 
       <div className="header">
@@ -585,16 +648,6 @@ function App() {
           </div>
         </div>
       )}
-      {/* DEPLOYMENT NOTE */}
-
-      <div className="deployment-note">
-        <strong>Deployment Note</strong>
-        <p>
-          Redis caching is disabled in the hosted demo due to free-tier
-          infrastructure constraints. Redis caching with a 5-minute TTL is fully
-          available when running DocuMind locally.
-        </p>
-      </div>
     </div>
   );
 }
