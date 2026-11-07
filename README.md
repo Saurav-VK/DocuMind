@@ -473,5 +473,5 @@ As a result:
 
 Built as an end-to-end exploration of production-style Retrieval-Augmented Generation systems, hybrid information retrieval, reranking, evaluation, caching, containerization, persistent storage, and cloud deployment.
 
-**🌐 Live Demo:** `YOUR_VERCEL_LINK_HERE`
+**🌐 Live Demo:** `https://documind-rag-lab.vercel.app/`
 **💻 GitHub:** `https://github.com/Saurav-VK/DocuMind`
